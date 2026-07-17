@@ -1,0 +1,645 @@
+<title>LORD Advisory — Sourcing Desk</title>
+<style>
+  :root {
+    --bg: #E8E9EC;
+    --panel: #FCFCFB;
+    --panel-2: #F2F2F0;
+    --ink: #1A1D24;
+    --muted: #5C6270;
+    --faint: #878D99;
+    --line: #D7D9DE;
+    --line-strong: #C3C6CD;
+    --brass: #8C6A2E;
+    --brass-ink: #6E521F;
+    --brass-soft: #EFE6D3;
+    --on-brass: #FBF7EE;
+    --good: #2F7A54;
+    --shadow: 0 1px 2px rgba(20,24,32,.06), 0 8px 24px -12px rgba(20,24,32,.18);
+    --radius: 12px;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121519;
+      --panel: #1A1F26;
+      --panel-2: #20262F;
+      --ink: #E7E9EC;
+      --muted: #99A1AE;
+      --faint: #6E7784;
+      --line: #2A313B;
+      --line-strong: #38414D;
+      --brass: #C79A4E;
+      --brass-ink: #DBB775;
+      --brass-soft: #2C2A22;
+      --on-brass: #17130A;
+      --good: #56B487;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px -14px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #E8E9EC; --panel: #FCFCFB; --panel-2: #F2F2F0; --ink: #1A1D24;
+    --muted: #5C6270; --faint: #878D99; --line: #D7D9DE; --line-strong: #C3C6CD;
+    --brass: #8C6A2E; --brass-ink: #6E521F; --brass-soft: #EFE6D3; --on-brass: #FBF7EE;
+    --good: #2F7A54; --shadow: 0 1px 2px rgba(20,24,32,.06), 0 8px 24px -12px rgba(20,24,32,.18);
+  }
+  :root[data-theme="dark"] {
+    --bg: #121519; --panel: #1A1F26; --panel-2: #20262F; --ink: #E7E9EC;
+    --muted: #99A1AE; --faint: #6E7784; --line: #2A313B; --line-strong: #38414D;
+    --brass: #C79A4E; --brass-ink: #DBB775; --brass-soft: #2C2A22; --on-brass: #17130A;
+    --good: #56B487; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px -14px rgba(0,0,0,.6);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: clamp(20px, 4vw, 44px) clamp(16px, 4vw, 28px) 140px;
+  }
+
+  /* ---- Masthead ---- */
+  header.masthead {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--line);
+  }
+  .brandmark { display: flex; flex-direction: column; gap: 4px; }
+  .firm {
+    font-family: var(--serif);
+    font-size: clamp(21px, 3.4vw, 27px);
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    font-weight: 600;
+    line-height: 1;
+  }
+  .firm .amp { color: var(--brass); }
+  .tool {
+    display: flex; align-items: center; gap: 9px;
+    font-size: 12.5px; color: var(--muted);
+    letter-spacing: .04em;
+  }
+  .tool .tick { width: 16px; height: 1px; background: var(--line-strong); }
+  .themebtn {
+    flex: none;
+    appearance: none;
+    border: 1px solid var(--line-strong);
+    background: var(--panel);
+    color: var(--muted);
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 15px;
+    display: grid; place-items: center;
+    transition: border-color .15s, color .15s;
+  }
+  .themebtn:hover { color: var(--ink); border-color: var(--brass); }
+
+  .lede {
+    margin: 22px 0 26px;
+    font-size: 15px;
+    color: var(--muted);
+    max-width: 62ch;
+  }
+  .lede b { color: var(--ink); font-weight: 600; }
+
+  /* ---- Screen reminder ---- */
+  .screen {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px 18px;
+    margin-bottom: 24px;
+  }
+  .screen summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 12px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--faint);
+    font-weight: 600;
+  }
+  .screen summary::-webkit-details-marker { display: none; }
+  .screen summary .chev {
+    margin-left: auto;
+    color: var(--faint);
+    transition: transform .2s;
+    font-size: 11px;
+  }
+  .screen[open] summary .chev { transform: rotate(90deg); }
+  .signals {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 24px;
+    margin-top: 14px;
+  }
+  @media (max-width: 560px) { .signals { grid-template-columns: 1fr; } }
+  .signals li {
+    list-style: none;
+    font-size: 13px;
+    color: var(--muted);
+    padding-left: 16px;
+    position: relative;
+    line-height: 1.4;
+  }
+  .signals li::before {
+    content: "";
+    position: absolute; left: 0; top: 8px;
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--brass);
+  }
+  .excl {
+    margin-top: 14px; padding-top: 12px;
+    border-top: 1px dashed var(--line);
+    font-size: 12.5px; color: var(--faint);
+  }
+  .excl b { color: var(--muted); font-weight: 600; }
+
+  /* ---- Fields ---- */
+  .field { margin-bottom: 22px; }
+  .field-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; margin-bottom: 8px;
+  }
+  label.flabel {
+    font-family: var(--serif);
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .hint { font-size: 12.5px; color: var(--faint); }
+  .count {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--brass);
+    letter-spacing: .02em;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  textarea {
+    width: 100%;
+    background: var(--panel);
+    color: var(--ink);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    padding: 14px 15px;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    line-height: 1.6;
+    resize: vertical;
+    box-shadow: var(--shadow);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  textarea::placeholder { color: var(--faint); }
+  textarea:focus {
+    outline: none;
+    border-color: var(--brass);
+    box-shadow: var(--shadow), 0 0 0 3px color-mix(in srgb, var(--brass) 22%, transparent);
+  }
+  #urls { min-height: 190px; }
+
+  /* ---- Paywalled blocks ---- */
+  .paywall-intro { font-size: 12.5px; color: var(--muted); margin: 0 0 12px; }
+  .pw-block {
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+  .pw-top { display: flex; gap: 10px; margin-bottom: 10px; }
+  .pw-top input {
+    flex: 1;
+    background: var(--panel);
+    color: var(--ink);
+    border: 1px solid var(--line-strong);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-family: var(--sans);
+    font-size: 13px;
+  }
+  .pw-top input:focus { outline: none; border-color: var(--brass); }
+  .pw-remove {
+    flex: none;
+    border: 1px solid var(--line-strong);
+    background: var(--panel);
+    color: var(--muted);
+    border-radius: 8px;
+    width: 38px; cursor: pointer; font-size: 16px;
+    transition: color .15s, border-color .15s;
+  }
+  .pw-remove:hover { color: #b4453d; border-color: #b4453d; }
+  .pw-block textarea { min-height: 96px; font-size: 12.5px; }
+  .addbtn {
+    appearance: none;
+    background: transparent;
+    border: 1px dashed var(--line-strong);
+    color: var(--muted);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-family: var(--sans);
+    font-size: 13px;
+    cursor: pointer;
+    width: 100%;
+    transition: border-color .15s, color .15s;
+  }
+  .addbtn:hover { border-color: var(--brass); color: var(--brass); }
+
+  /* ---- Preview ---- */
+  details.preview { margin-top: 8px; }
+  details.preview > summary {
+    list-style: none;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--muted);
+    display: inline-flex; align-items: center; gap: 8px;
+    user-select: none;
+  }
+  details.preview > summary::-webkit-details-marker { display: none; }
+  details.preview > summary .chev { font-size: 11px; transition: transform .2s; color: var(--faint); }
+  details.preview[open] > summary .chev { transform: rotate(90deg); }
+  pre.out {
+    margin: 12px 0 0;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--muted);
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 340px;
+    overflow-y: auto;
+  }
+
+  /* ---- Action bar ---- */
+  .actionbar {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-top: 1px solid var(--line);
+  }
+  .actionbar .inner {
+    max-width: 800px; margin: 0 auto;
+    padding: 14px clamp(16px, 4vw, 28px);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .status {
+    font-size: 12.5px; color: var(--faint);
+    margin-right: auto;
+    font-variant-numeric: tabular-nums;
+  }
+  .status b { color: var(--muted); font-weight: 600; }
+  button.btn {
+    appearance: none;
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 10px;
+    padding: 11px 18px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: transform .06s, background .15s, border-color .15s, color .15s;
+  }
+  button.btn:active { transform: translateY(1px); }
+  .btn-ghost {
+    background: transparent;
+    border-color: var(--line-strong);
+    color: var(--muted);
+  }
+  .btn-ghost:hover { color: var(--ink); border-color: var(--faint); }
+  .btn-primary {
+    background: var(--brass);
+    color: var(--on-brass);
+    box-shadow: var(--shadow);
+  }
+  .btn-primary:hover { background: color-mix(in srgb, var(--brass) 88%, #000); }
+  .btn-primary.done { background: var(--good); }
+  .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+  .footnote {
+    margin-top: 30px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--faint);
+    line-height: 1.6;
+  }
+  .footnote a { color: var(--brass); text-decoration: none; border-bottom: 1px solid transparent; }
+  .footnote a:hover { border-bottom-color: var(--brass); }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <div class="brandmark">
+      <div class="firm">LORD<span class="amp"> · </span>ADVISORY</div>
+      <div class="tool"><span class="tick"></span> Sourcing Desk</div>
+    </div>
+    <button class="themebtn" id="theme" title="Toggle light / dark" aria-label="Toggle theme">◐</button>
+  </header>
+
+  <p class="lede">
+    Drop a batch of URLs below — articles, homepages, or section pages. This desk assembles them into one
+    ready-to-run brief for Winston's convening pipeline: paste the copied prompt into a fresh Claude chat and it
+    screens every headline against the <b>lead profile</b>, enriches promising names, and returns email-ready entries.
+    Your batch is saved in this browser until you clear it.
+  </p>
+
+  <details class="screen" id="screen">
+    <summary>
+      What the brief screens for
+      <span class="chev">▶</span>
+    </summary>
+    <ul class="signals">
+      <li>Companies opening or expanding a DC office, or relocating to the region</li>
+      <li>First head of policy, government affairs, or public-sector lead</li>
+      <li>VC firms launching policy arms or government-facing programs</li>
+      <li>Execs newly engaging government — testimony, task forces, first federal contracts</li>
+      <li>Entering regulated markets: defense, health, AI, fintech, energy</li>
+      <li>Newly wealthy or prominent people relocating to / investing in the DC area</li>
+      <li>Foreign or sovereign-linked entities establishing a Washington presence</li>
+      <li>New trade associations, coalitions, or institutes standing up in DC</li>
+      <li>People publicly seeking rooms — hosting events, joining DC boards</li>
+    </ul>
+    <div class="excl">
+      <b>Silently excluded:</b> quoted experts, entrenched DC insiders, government officials themselves,
+      and anyone whose DC connection is incidental. Paywalls are never bypassed.
+    </div>
+  </details>
+
+  <div class="field">
+    <div class="field-head">
+      <label class="flabel" for="urls">URLs to process</label>
+      <span class="count" id="urlcount">0 links</span>
+    </div>
+    <div class="hint" style="margin-bottom:8px">One per line. Mix articles and homepages freely — each is handled the right way.</div>
+    <textarea id="urls" spellcheck="false" placeholder="https://www.politico.com/
+https://www.axios.com/technology
+https://example.com/2026/07/acme-opens-washington-office"></textarea>
+  </div>
+
+  <div class="field">
+    <div class="field-head">
+      <label class="flabel">Pasted source text <span style="font-weight:400;color:var(--faint);font-size:13px">— optional</span></label>
+    </div>
+    <p class="paywall-intro">
+      For outlets you subscribe to, paste the article text here instead of the link — it'll be treated as a full article,
+      no paywall bypass attempted. Add one block per source.
+    </p>
+    <div id="pwlist"></div>
+    <button class="addbtn" id="addpw" type="button">+ Add pasted source</button>
+  </div>
+
+  <details class="preview">
+    <summary><span class="chev">▶</span> Preview the assembled prompt</summary>
+    <pre class="out" id="preview"></pre>
+  </details>
+
+  <div class="footnote">
+    Built for internal use at LORD Advisory. The copied prompt runs in
+    <a href="https://claude.ai/new" target="_blank" rel="noopener">a new Claude chat</a> — this page only assembles it, it
+    never fetches pages or bypasses logins itself.
+  </div>
+</div>
+
+<div class="actionbar">
+  <div class="inner">
+    <span class="status" id="status">Ready</span>
+    <button class="btn btn-ghost" id="clear" type="button">Clear</button>
+    <button class="btn btn-primary" id="copy" type="button" disabled>Copy prompt</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  var LS_URLS = "lord.sourcing.urls";
+  var LS_PW = "lord.sourcing.pw";
+  var LS_THEME = "lord.sourcing.theme";
+
+  var urlsEl = document.getElementById("urls");
+  var pwList = document.getElementById("pwlist");
+  var previewEl = document.getElementById("preview");
+  var countEl = document.getElementById("urlcount");
+  var statusEl = document.getElementById("status");
+  var copyBtn = document.getElementById("copy");
+  var clearBtn = document.getElementById("clear");
+  var addBtn = document.getElementById("addpw");
+  var themeBtn = document.getElementById("theme");
+
+  // ---- Theme ----
+  try {
+    var saved = localStorage.getItem(LS_THEME);
+    if (saved) document.documentElement.setAttribute("data-theme", saved);
+  } catch (e) {}
+  themeBtn.addEventListener("click", function () {
+    var cur = document.documentElement.getAttribute("data-theme");
+    var isDark = cur ? cur === "dark"
+      : window.matchMedia("(prefers-color-scheme: dark)").matches;
+    var next = isDark ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    try { localStorage.setItem(LS_THEME, next); } catch (e) {}
+  });
+
+  var INSTRUCTIONS =
+"You are a lead-sourcing analyst for LORD Advisory, a Washington, DC advisory firm whose principal, Winston, offers convening services — curated dinners and gatherings that connect clients to DC's policy, business, and civic worlds. Your job is to read the sources below and surface leads worth inviting into that world.\n" +
+"\n" +
+"HOW TO HANDLE EACH URL\n" +
+"The URLs below may be individual articles or homepages / section pages of news outlets. Handle each accordingly.\n" +
+"\n" +
+"Article mode: Fetch and extract the full article text, then run the lead extraction below.\n" +
+"\n" +
+"Homepage mode: Fetch the page and pull all article headlines, teasers, and visible summaries. Then work in two passes:\n" +
+"  1. Scan every headline / teaser against the lead profile. Discard clear non-fits silently.\n" +
+"  2. For promising headlines: first try following the article link if it's freely accessible. If the article is paywalled or the link is dead, do NOT try to get around it — instead use web search and your own knowledge to build context on the company or person from other public sources (their own site, press releases, other coverage of the same news). If you can't confirm enough to write a solid entry, still include it in the \"Worth a manual look\" section at the end with just the headline and outlet, rather than dropping it.\n" +
+"\n" +
+"Never attempt to bypass paywalls or logins. Where article text is provided in the PASTED SOURCE TEXT section, treat it as Article mode using that text.\n" +
+"\n" +
+"THE LEAD PROFILE\n" +
+"Extract companies and individuals who fit this: someone trying to expand their presence in Washington or build influence there — a person or organization that would benefit from curated dinners connecting them to policymakers, operators, funders, and civic leaders.\n" +
+"\n" +
+"Strong signals:\n" +
+"  • Companies opening or expanding a DC office, or relocating to the region\n" +
+"  • Companies hiring their first head of policy, government affairs, or public sector lead\n" +
+"  • VC firms or funds launching policy arms, DC programs, or government-facing initiatives\n" +
+"  • Founders or executives newly engaging with government — testifying, joining task forces, winning first federal contracts, entering regulated markets (defense, health, AI, fintech, energy)\n" +
+"  • Newly wealthy or newly prominent people relocating to or investing in the DC area\n" +
+"  • Foreign companies or sovereign-linked entities establishing a Washington presence\n" +
+"  • New trade associations, coalitions, or institutes standing up in DC\n" +
+"  • People publicly seeking rooms — hosting policy events, joining boards of DC institutions\n" +
+"\n" +
+"Weak or excluded: people merely quoted as experts, longtime DC insiders with deep existing networks, government officials themselves, and anyone whose DC connection is incidental.\n" +
+"\n" +
+"OUTPUT — plain text only, one entry per lead, strongest fits first. For each lead:\n" +
+"  Name / Company — one-line description of who they are\n" +
+"  Why flagged: 1–2 sentences on what they did or announced that signals DC ambition. If context came from web search rather than the pasted / linked source, say so briefly.\n" +
+"  Dinner angle: 1 sentence on the specific kind of room Winston could offer (e.g., \"an intro dinner with defense-tech founders and Hill staff,\" not \"a networking dinner\").\n" +
+"  Source: outlet name (plus enrichment source if used)\n" +
+"\n" +
+"After the main list, include a \"Worth a manual look\" section — headlines that seemed promising but couldn't be confirmed (just headline and outlet). End with a two-sentence batch summary. No tables, no CSV, no code — plain text I can copy straight into an email.";
+
+  function getPwData() {
+    var out = [];
+    pwList.querySelectorAll(".pw-block").forEach(function (b) {
+      out.push({
+        src: b.querySelector(".pw-src").value,
+        text: b.querySelector(".pw-text").value
+      });
+    });
+    return out;
+  }
+
+  function cleanUrls() {
+    return urlsEl.value.split("\n")
+      .map(function (l) { return l.trim(); })
+      .filter(function (l) { return l.length > 0; });
+  }
+
+  function build() {
+    var urls = cleanUrls();
+    var pw = getPwData().filter(function (p) { return p.text.trim().length > 0; });
+
+    var urlBlock = urls.length
+      ? urls.map(function (u, i) { return (i + 1) + ". " + u; }).join("\n")
+      : "(none provided)";
+
+    var pwBlock;
+    if (pw.length) {
+      pwBlock = pw.map(function (p, i) {
+        var label = p.src.trim() || "Source " + (i + 1);
+        return "----- SOURCE " + (i + 1) + ": " + label + " -----\n" + p.text.trim();
+      }).join("\n\n");
+    } else {
+      pwBlock = "None.";
+    }
+
+    return INSTRUCTIONS +
+      "\n\n============================================================\n" +
+      "URLS TO PROCESS\n" +
+      "============================================================\n" +
+      urlBlock +
+      "\n\n============================================================\n" +
+      "PASTED SOURCE TEXT (paywalled / subscriber articles — treat as Article mode)\n" +
+      "============================================================\n" +
+      pwBlock;
+  }
+
+  function refresh() {
+    var urls = cleanUrls();
+    var pw = getPwData().filter(function (p) { return p.text.trim().length > 0; });
+    countEl.textContent = urls.length + (urls.length === 1 ? " link" : " links");
+
+    var bits = [];
+    bits.push("<b>" + urls.length + "</b> " + (urls.length === 1 ? "link" : "links"));
+    if (pw.length) bits.push("<b>" + pw.length + "</b> pasted " + (pw.length === 1 ? "source" : "sources"));
+    statusEl.innerHTML = (urls.length || pw.length) ? bits.join(" · ") + " ready" : "Ready";
+
+    var has = urls.length > 0 || pw.length > 0;
+    copyBtn.disabled = !has;
+
+    previewEl.textContent = has ? build() : "Add at least one URL or one pasted source to build the prompt.";
+    save();
+  }
+
+  function save() {
+    try {
+      localStorage.setItem(LS_URLS, urlsEl.value);
+      localStorage.setItem(LS_PW, JSON.stringify(getPwData()));
+    } catch (e) {}
+  }
+
+  function addPwBlock(src, text) {
+    var b = document.createElement("div");
+    b.className = "pw-block";
+    b.innerHTML =
+      '<div class="pw-top">' +
+        '<input class="pw-src" type="text" placeholder="Source — outlet or URL (e.g. WSJ, Bloomberg)" />' +
+        '<button class="pw-remove" type="button" title="Remove" aria-label="Remove source">×</button>' +
+      '</div>' +
+      '<textarea class="pw-text" spellcheck="false" placeholder="Paste the full article text here…"></textarea>';
+    b.querySelector(".pw-src").value = src || "";
+    b.querySelector(".pw-text").value = text || "";
+    b.querySelector(".pw-remove").addEventListener("click", function () {
+      b.remove();
+      refresh();
+    });
+    b.querySelector(".pw-src").addEventListener("input", refresh);
+    b.querySelector(".pw-text").addEventListener("input", refresh);
+    pwList.appendChild(b);
+  }
+
+  // ---- Restore ----
+  try {
+    var su = localStorage.getItem(LS_URLS);
+    if (su) urlsEl.value = su;
+    var sp = JSON.parse(localStorage.getItem(LS_PW) || "[]");
+    if (Array.isArray(sp)) sp.forEach(function (p) { addPwBlock(p.src, p.text); });
+  } catch (e) {}
+
+  urlsEl.addEventListener("input", refresh);
+  addBtn.addEventListener("click", function () { addPwBlock("", ""); refresh(); });
+
+  copyBtn.addEventListener("click", function () {
+    var text = build();
+    function ok() {
+      copyBtn.classList.add("done");
+      var prev = copyBtn.textContent;
+      copyBtn.textContent = "Copied ✓";
+      statusEl.innerHTML = "Prompt copied — paste it into a new Claude chat.";
+      setTimeout(function () {
+        copyBtn.classList.remove("done");
+        copyBtn.textContent = prev;
+        refresh();
+      }, 1900);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(ok, function () { legacy(text, ok); });
+    } else {
+      legacy(text, ok);
+    }
+  });
+
+  function legacy(text, ok) {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); ok(); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+
+  clearBtn.addEventListener("click", function () {
+    if (!cleanUrls().length && !getPwData().length) return;
+    if (!window.confirm("Clear all URLs and pasted sources from this batch?")) return;
+    urlsEl.value = "";
+    pwList.innerHTML = "";
+    try { localStorage.removeItem(LS_URLS); localStorage.removeItem(LS_PW); } catch (e) {}
+    refresh();
+  });
+
+  refresh();
+})();
+</script>
