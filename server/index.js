@@ -15,6 +15,7 @@ import { dirname, join } from "node:path";
 import { handleAsk } from "./routes/ask.js";
 import * as nfl from "./sources/nflverse.js";
 import * as odds from "./sources/odds.js";
+import * as tables from "./sources/tables.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -22,7 +23,8 @@ app.use(express.json());
 app.use(express.static(join(__dirname, "..", "web")));
 
 function fail(res, err) {
-  const status = err.userFacing ? 400 : err.code === "NO_LLM_KEY" || err.code === "NO_ODDS_KEY" ? 503 : 500;
+  const soft = ["NO_LLM_KEY", "NO_ODDS_KEY", "NOT_INGESTED"].includes(err.code);
+  const status = err.userFacing ? 400 : soft ? 503 : 500;
   res.status(status).json({ error: err.message, code: err.code || null });
 }
 
@@ -32,7 +34,47 @@ app.get("/api/health", (_req, res) => {
     llm: !!process.env.ANTHROPIC_API_KEY,
     odds: !!process.env.ODDS_API_KEY,
     model: process.env.GRIDIRON_MODEL || "claude-opus-5",
+    ingestedSeason: tables.latestSeason(),
   });
+});
+
+// Defense matchup table for one team (position grades + tendencies).
+app.get("/api/defense/:team", (req, res) => {
+  try {
+    const abbr = tables.teamAbbr(req.params.team);
+    if (!abbr) return res.status(404).json({ error: `Unknown team "${req.params.team}".` });
+    const year = parseInt(req.query.year, 10) || undefined;
+    res.json({
+      team: abbr,
+      name: tables.teamName(abbr),
+      vsPosition: tables.defenseVsPosition(abbr, year),
+      tendencies: tables.defenseTendencies(abbr, year),
+    });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// Defense leaderboard: teams ranked by a stat allowed to a position.
+app.get("/api/defense-leaderboard", (req, res) => {
+  try {
+    const pos = (req.query.position || "WR").toUpperCase();
+    const metric = req.query.metric || (pos === "RB" ? "rushYdsPerGame" : "recYdsPerGame");
+    res.json(tables.defenseLeaderboard(pos, metric, parseInt(req.query.year, 10) || undefined));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// A receiver's route tree + man/zone coverage splits.
+app.get("/api/routes/:name", (req, res) => {
+  try {
+    const cov = tables.playerCoverage(req.params.name, parseInt(req.query.year, 10) || undefined);
+    if (!cov) return res.status(404).json({ error: `No route data for "${req.params.name}".` });
+    res.json(cov);
+  } catch (err) {
+    fail(res, err);
+  }
 });
 
 app.post("/api/ask", async (req, res) => {

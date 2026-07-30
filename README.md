@@ -12,16 +12,33 @@ game logs, situational splits, and live sportsbook lines.
 
 | You ask… | It uses… |
 |---|---|
-| "How many games did Josh Allen throw for 300+ yards?" | Weekly game logs (nflverse), threshold scan |
-| "What's CeeDee Lamb's target share and air yards?" | nflverse advanced usage — the prop-driving signals |
-| "Christian McCaffrey's last 5 games" | Weekly game log |
-| "Justin Jefferson advanced stats" | EPA, target share, air-yards share, WOPR, aDOT, catch rate |
-| "Tyreek Hill vs the Jets matchup" | Player usage/efficiency **+ the opponent defense summary** |
+| "CeeDee Lamb vs the Lions matchup" | **Full blend:** player usage + man/zone splits, overlaid on the defense's position grade + coverage tendencies |
+| "Which defense allows the most receiving yards to WRs?" | Defense-vs-position leaderboard (ranked 1–32) |
+| "How does the 49ers defense handle tight ends?" | One defense's position grade + scheme |
+| "How much man coverage do the Ravens play?" | Coverage & blitz tendencies (man/zone rate, Cover 0–6 shells, pressure) |
+| "What routes does Justin Jefferson run, and how's he do vs man?" | Route tree + man-vs-zone catch rate / yards per target |
+| "What's CeeDee Lamb's target share and air yards?" | Advanced usage — the prop-driving signals |
+| "How many games did Josh Allen throw for 300+ yards?" | Weekly game-log threshold scan |
 | "NFL spreads and totals this week" | Live lines across DraftKings, FanDuel, BetMGM, Caesars… |
 
-The betting-relevant edge lives in **advanced usage** — target share, air-yards share, and WOPR
-predict receiving props far better than raw yardage, and the **matchup** view pairs that usage with
-the defense a player is about to face.
+## The matchup engine (built from play-by-play)
+
+The betting edge lives in **matchups**, and those are computed from every play of the season via an
+ingest step (`scripts/ingest.js`) that joins nflverse play-by-play + participation data:
+
+- **Defense vs position** — receiving/rushing yards, TDs, and catch rate each defense allows to WRs,
+  RBs, and TEs, per game, ranked 1–32. (Rank 1 = softest matchup.)
+- **Coverage & scheme tendencies** — man vs zone rate, the full Cover 0–6 shell distribution, blitz
+  rate, pressure rate, and average box count. From NFL Next Gen Stats participation data.
+- **Route trees & coverage splits** — every receiver's route distribution when targeted, and how
+  they perform **vs man vs zone** (catch rate, yards per target).
+
+The **matchup** view fuses these: a high-target-share receiver who thrives vs zone, facing a
+zone-heavy defense that's soft to his position, is the setup you're hunting.
+
+> **What's *not* free:** per-route separation/cushion charting (that's PFF / Sports Info Solutions).
+> Everything above — routes run, coverage shells, formation, personnel, blitz — is in nflverse for
+> 2016–2024.
 
 ---
 
@@ -58,9 +75,13 @@ without new code, as long as the *intent* maps to a handler.
 
 ```bash
 npm install
-cp .env.example .env      # then fill in your keys
-npm start                 # → http://localhost:8787
+cp .env.example .env             # then fill in your keys (both optional)
+node scripts/ingest.js 2024      # build the matchup tables (~10s, one-time per season)
+npm start                        # → http://localhost:8787
 ```
+
+`data/nfl_2024.json` is committed, so matchups work out of the box; re-run the ingest to add more
+seasons (`node scripts/ingest.js 2023 2022`). The file is ~0.15 MB per season.
 
 **Keys** (both optional — the app runs and tells you what's disabled without them):
 
@@ -81,23 +102,29 @@ nflverse (GitHub) and ESPN need no key.
 | `GET /api/odds/:eventId/props` | Player props (pass/rush/rec yards, receptions, anytime TD) for a game. |
 | `GET /api/advanced/:name?year=YYYY` | A player's advanced usage & efficiency. |
 | `GET /api/gamelog/:name?year=YYYY` | Weekly game log. |
-| `GET /api/health` | Which keys are configured. |
+| `GET /api/defense/:team?year=YYYY` | A defense's position grades + coverage tendencies. |
+| `GET /api/defense-leaderboard?position=WR&metric=recYdsPerGame` | Defenses ranked by what they allow. |
+| `GET /api/routes/:name?year=YYYY` | A receiver's route tree + man/zone splits. |
+| `GET /api/health` | Keys configured + ingested season. |
 
 ---
 
 ## Roadmap to rival Action
 
-This is a working foundation. To close the gap:
+Done so far: **play-by-play ingest** (`scripts/ingest.js`) and **real defense-vs-position + coverage
++ route tables**. Next:
 
-1. **Ingest nflverse play-by-play into a database.** Right now season CSVs are fetched and cached in
-   memory. A nightly ingest of full PBP into Postgres unlocks any aggregation instantly and lets the
-   LLM write SQL for questions no endpoint anticipates (text-to-SQL) — e.g. "fantasy points allowed to
-   slot receivers by Cover-3 defenses".
-2. **Real defense-vs-position tables.** Aggregate PBP by opponent + position for true matchup grades
-   (yards/TDs allowed to WR1s, RBs on the ground, TEs), not just ESPN's team totals.
-3. **Expand markets & props** — alt lines, first-half, anytime/first TD, live odds movement + history,
-   and implied-probability vs. your own projection to surface edges.
-4. **Next Gen Stats** — separation, cushion, time-to-throw, rush yards over expected (nflverse `nextgen`
-   releases) for even sharper matchup reads.
-5. **Notes on data:** nflverse renames release assets occasionally (the loader tries current + legacy
-   names); ESPN's unofficial endpoints shift shape now and then. Ingesting (step 1) removes both risks.
+1. **Opponent-weighted tendencies.** Split each defense's coverage mix by the *specific* offense it
+   faces (thin samples, but the "what will they run against *this* team" read you asked about). The
+   ingest already keys everything by game, so it's an aggregation change.
+2. **Text-to-SQL.** Load the ingested tables into SQLite and let the LLM write SQL for questions no
+   handler anticipates — "TE yards allowed by Cover-3 defenses on 3rd down".
+3. **Props + edges** — pull player props (already supported via `/api/odds/:eventId/props`), convert
+   to implied probability, and compare against a projection built from usage × matchup to surface value.
+4. **Line movement** — snapshot odds over time for steam/reverse-line-movement reads.
+5. **Next Gen Stats** — separation, cushion, time-to-throw, rush yards over expected (nflverse
+   `nextgen` releases) for even sharper matchup grades.
+
+**Data notes:** nflverse renames release assets occasionally (the ingest tries current + legacy
+names); NFL participation data (coverage/route) covers 2016–2024. Per-route separation charting is
+paid (PFF / SIS) and not included.

@@ -29,12 +29,15 @@ const PLAN_SCHEMA = {
     intent: {
       type: "string",
       enum: [
-        "count_games",       // "how many times has X thrown for 300+ yards"
-        "player_splits",     // home/away, vs division, situational lines
-        "player_advanced",   // EPA, target share, air yards, WOPR (nflverse)
-        "matchup",           // player vs an opposing defense — betting blend
-        "game_log",          // recent game-by-game
-        "odds",              // lines / props across books
+        "count_games",         // "how many times has X thrown for 300+ yards"
+        "player_splits",       // home/away, vs division, situational lines
+        "player_advanced",     // EPA, target share, air yards, WOPR (nflverse)
+        "route_profile",       // a receiver's route tree + man/zone splits
+        "defense_vs_position", // how a defense (or the league) handles WR/RB/TE
+        "defense_tendencies",  // a defense's man/zone rate, coverage shells, blitz
+        "matchup",             // player vs an opposing defense — the full blend
+        "game_log",            // recent game-by-game
+        "odds",                // lines / props across books
         "unsupported",
       ],
     },
@@ -49,6 +52,7 @@ const PLAN_SCHEMA = {
     operator: { type: ["string", "null"], enum: ["gte", "gt", "eq", "lt", "lte", null] },
     threshold: { type: ["number", "null"] },
     phase: { type: ["string", "null"], enum: ["passing", "rushing", "receiving", null], description: "Which stat family the question is about." },
+    position: { type: ["string", "null"], enum: ["WR", "RB", "TE", "QB", null], description: "Position for defense-vs-position questions." },
     timeframe: {
       type: "object",
       additionalProperties: false,
@@ -65,7 +69,7 @@ const PLAN_SCHEMA = {
   },
   required: [
     "intent", "player", "opponent", "team", "stat", "operator", "threshold",
-    "phase", "timeframe", "market", "explanation",
+    "phase", "position", "timeframe", "market", "explanation",
   ],
 };
 
@@ -75,7 +79,10 @@ Pick the single best intent:
 - count_games: threshold questions over game logs ("how many games did <player> go over 100 rushing yards"). Default operator to "gte" for "N+" phrasing; use "eq" only when the user says "exactly". Set the stat to the plain stat name and the phase to passing/rushing/receiving.
 - player_splits: home/away, vs division, or "over the last N" situational lines.
 - player_advanced: usage and efficiency — target share, air yards, EPA, WOPR, aDOT, catch rate. Use this for "how involved is X", "X's target share", "X advanced stats".
-- matchup: a player facing a specific defense. Set both player and opponent — blends the player's usage/efficiency with how that defense performs.
+- route_profile: a receiver's route tree and how they perform vs man vs zone coverage ("what routes does X run", "X vs man coverage").
+- defense_vs_position: how a defense handles a position, or a league leaderboard ("how do the Jets defend tight ends", "which defense allows the most receiving yards to WRs"). Set the team (or opponent) and the position (WR/RB/TE).
+- defense_tendencies: a defense's scheme — man vs zone rate, coverage shells (Cover 0–6), blitz and pressure rate ("how much man coverage do the Ravens play"). Set team.
+- matchup: a player facing a specific defense. Set both player and opponent — blends the player's usage and route/coverage splits with how that defense performs vs the player's position and its coverage tendencies.
 - game_log: recent game-by-game results.
 - odds: betting lines, spreads, totals, moneyline, or player props (passing/rushing/receiving yards, receptions, anytime TD).
 - unsupported: out of scope; still explain why.

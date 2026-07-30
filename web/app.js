@@ -1,11 +1,12 @@
 /* Gridiron Desk frontend — talk to /api/ask, render each result kind. */
 
 const EXAMPLES = [
+  "CeeDee Lamb vs the Lions matchup",
+  "How does the 49ers defense handle tight ends?",
+  "Which defense allows the most receiving yards to WRs?",
+  "How much man coverage do the Ravens play?",
+  "What routes does Justin Jefferson run, and how's he do vs man?",
   "How many games did Josh Allen throw for 300+ yards?",
-  "What's CeeDee Lamb's target share and air yards this season?",
-  "Christian McCaffrey's last 5 games",
-  "Tyreek Hill vs the Jets matchup",
-  "Justin Jefferson advanced stats",
   "NFL spreads and totals this week",
 ];
 
@@ -21,7 +22,7 @@ async function health() {
     $("#status-chip").innerHTML =
       `LLM <span class="${h.llm ? "on" : "off"}">${h.llm ? "●" : "○"}</span> ` +
       `odds <span class="${h.odds ? "on" : "off"}">${h.odds ? "●" : "○"}</span> ` +
-      `<span style="color:var(--faint)">${esc(h.model)}</span>`;
+      `<span style="color:var(--faint)">${h.ingestedSeason ? h.ingestedSeason + " data · " : ""}${esc(h.model)}</span>`;
   } catch { $("#status-chip").textContent = "server offline"; }
 }
 
@@ -133,31 +134,98 @@ const RENDER = {
     return c;
   },
 
-  matchup(r) {
-    const a = r.advanced;
-    const c = card(`${esc(a.player)} vs ${esc(r.opponent?.name || "defense")} — ${a.year}`);
+  route_profile(r) {
+    const c = card(`${esc(r.name)} — route tree & coverage splits, ${r.year}`);
     const b = c.querySelector(".body");
     const grid = el("div", "grid2");
-    const left = el("div");
-    left.appendChild(el("h3", "sec", `${esc(a.player)} usage`));
-    left.appendChild(statBlock("", [
-      ["Target share", pct(a.receiving.targetShare)], ["Air-yards share", pct(a.receiving.airYardsShare)],
-      ["WOPR", a.receiving.wopr], ["Rec yards/g", a.games ? +(a.receiving.yards / a.games).toFixed(1) : null],
-      ["Rush yards/g", a.games ? +(a.rushing.yards / a.games).toFixed(1) : null],
-      ["PPR/g", a.fantasy.pprPerGame],
+    grid.appendChild(coverageSplit("vs MAN", r.vsMan));
+    grid.appendChild(coverageSplit("vs ZONE", r.vsZone));
+    b.appendChild(grid);
+    b.appendChild(el("h3", "sec", "Route distribution (when targeted)"));
+    b.appendChild(routeBars(r.routes));
+    return c;
+  },
+
+  defense_vs_position_team(r) {
+    const c = card(`${esc(r.teamName)} defense vs ${esc(r.position)} — ${r.year}`);
+    const b = c.querySelector(".body");
+    if (!r.row) { b.appendChild(note(`No ${r.position} data for that defense.`)); return c; }
+    const isRb = r.position === "RB";
+    const primary = isRb ? r.row.rushYdsPerGame : r.row.recYdsPerGame;
+    const rank = r.row.ranks?.[isRb ? "rushYdsPerGame" : "recYdsPerGame"];
+    b.appendChild(el("div", "answer",
+      `<div class="big">${primary}</div>
+       <div class="line"><b>${isRb ? "rush" : "receiving"} yards/game</b> allowed to ${esc(r.position)}s
+       ${rank ? `· <b>${ordinal(rank)}-most</b> in the NFL (rank ${rank}/32)` : ""}</div>`));
+    b.appendChild(statBlock("", [
+      ["Rec yds/g allowed", r.row.recYdsPerGame], ["Rec TD/g", r.row.recTdPerGame],
+      ["Catch% allowed", pct(r.row.catchRate)], ["Targets/g", r.row.targetsPerGame],
+      ["Rush yds/g allowed", r.row.rushYdsPerGame], ["Rush TD/g", r.row.rushTdPerGame],
     ]));
+    if (r.tendencies) { b.appendChild(el("h3", "sec", "Coverage scheme")); b.appendChild(tendencyBlock(r.tendencies)); }
+    return c;
+  },
+
+  defense_leaderboard(r) {
+    const c = card(`Defenses ranked — ${labelMetric(r.metric)} allowed to ${esc(r.position)}s, ${r.year}`);
+    const b = c.querySelector(".body");
+    const max = Math.max(...r.rows.map((x) => x.value));
+    const rows = r.rows.map((x, i) => `<tr>
+      <td class="num">${i + 1}</td><td>${esc(x.name)}</td>
+      <td class="num hi">${x.value}</td>
+      <td><span class="bar" style="width:${Math.round(120 * x.value / max)}px"></span></td></tr>`).join("");
+    b.appendChild(tableWrap(`<tr><th class="num">#</th><th>Defense</th><th class="num">${labelMetric(r.metric)}</th><th></th></tr>`, rows));
+    b.appendChild(note("Rank 1 = most allowed (softest matchup). Grades derived from every play, joined to receiver/rusher positions."));
+    return c;
+  },
+
+  defense_tendencies(r) {
+    const c = card(`${esc(r.teamName)} defense — scheme & coverage, ${r.year}`);
+    c.querySelector(".body").appendChild(tendencyBlock(r.tendencies, true));
+    return c;
+  },
+
+  matchup(r) {
+    const c = card(`${esc(r.player)} (${esc(r.position)}) vs ${esc(r.opponent?.name || "defense")} — ${r.year}`);
+    const b = c.querySelector(".body");
+    const grid = el("div", "grid2");
+
+    const left = el("div");
+    left.appendChild(el("h3", "sec", `${esc(r.player)} — usage`));
+    if (r.advanced) left.appendChild(statBlock("", [
+      ["Target share", pct(r.advanced.receiving.targetShare)],
+      ["Air-yards share", pct(r.advanced.receiving.airYardsShare)],
+      ["WOPR", r.advanced.receiving.wopr],
+      ["Rec yds/g", r.advanced.games ? +(r.advanced.receiving.yards / r.advanced.games).toFixed(1) : null],
+    ]));
+    if (r.playerCoverage) {
+      const g = el("div", "grid2");
+      g.appendChild(coverageSplit("vs MAN", r.playerCoverage.vsMan));
+      g.appendChild(coverageSplit("vs ZONE", r.playerCoverage.vsZone));
+      left.appendChild(g);
+    }
     grid.appendChild(left);
+
     const right = el("div");
-    right.appendChild(el("h3", "sec", `${esc(r.opponent?.name || "Opponent")} defense`));
-    if (r.defense && Object.keys(r.defense.stats).length) {
-      const rows = Object.entries(r.defense.stats).slice(0, 12)
-        .map(([k, v]) => `<tr><td>${esc(k)}</td><td class="num hi">${esc(v)}</td></tr>`).join("");
-      right.appendChild(tableWrap(`<tr><th>Metric</th><th class="num">Value</th></tr>`, rows));
+    if (!r.opponent) {
+      right.appendChild(note('Name an opponent to overlay the defense (e.g. "vs the Jets").'));
     } else {
-      right.appendChild(note(r.opponent ? "ESPN returned no defensive summary for that team/season." : "Name an opponent to pull their defense (e.g. \"vs the Jets\")."));
+      right.appendChild(el("h3", "sec", `${esc(r.opponent.name)} defense`));
+      if (r.defenseVsPos) {
+        const isRb = r.position === "RB";
+        const rank = r.defenseVsPos.ranks?.[isRb ? "rushYdsPerGame" : "recYdsPerGame"];
+        right.appendChild(statBlock(`vs ${esc(r.position)}`, [
+          ["Rec yds/g allowed", r.defenseVsPos.recYdsPerGame],
+          ["Catch% allowed", pct(r.defenseVsPos.catchRate)],
+          ["Rush yds/g allowed", r.defenseVsPos.rushYdsPerGame],
+          ["Matchup rank", rank ? `${ordinal(rank)}-softest` : null],
+        ]));
+      }
+      if (r.defenseTendencies) right.appendChild(tendencyBlock(r.defenseTendencies));
     }
     grid.appendChild(right);
     b.appendChild(grid);
+    b.appendChild(note("The edge: a high-target-share receiver who thrives vs zone, facing a zone-heavy defense that's soft to his position, is the setup you're hunting."));
     return c;
   },
 
@@ -231,6 +299,43 @@ function tableWrap(head, rows) {
 const pct = (v) => (v == null ? null : `${v}%`);
 const fmtOdds = (p) => (p == null ? "—" : p > 0 ? `+${p}` : `${p}`);
 const fmtPt = (p) => (p == null ? "—" : p > 0 ? `+${p}` : `${p}`);
+const ordinal = (n) => { const s = ["th", "st", "nd", "rd"], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
+const labelMetric = (m) => ({ recYdsPerGame: "rec yds/g", rushYdsPerGame: "rush yds/g" }[m] || m);
+const COVER = { COVER_0: "Cover 0", COVER_1: "Cover 1", COVER_2: "Cover 2", COVER_3: "Cover 3", COVER_4: "Cover 4", COVER_6: "Cover 6", "2_MAN": "2-Man", COVER_9: "Cover 9", COMBO: "Combo", PREVENT: "Prevent" };
+
+function coverageSplit(title, s) {
+  const d = el("div", "note");
+  if (!s) { d.innerHTML = `<div style="color:var(--muted);font-size:12px">${esc(title)}: no data</div>`; return d; }
+  d.innerHTML = `<div style="color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.05em">${esc(title)}</div>
+    <div style="margin-top:6px;font-size:14px"><b style="color:var(--accent)">${s.catchRate}%</b> catch
+    · <b>${s.ydsPerTarget}</b> yds/tgt <span style="color:var(--faint)">(${s.targets} tgt)</span></div>`;
+  return d;
+}
+function routeBars(routes) {
+  if (!routes?.length) return note("No route data.");
+  const max = Math.max(...routes.map((r) => r.pct));
+  const rows = routes.map((r) => `<tr>
+    <td>${esc(r.route)}</td><td class="num hi">${r.pct}%</td>
+    <td><span class="bar" style="width:${Math.round(110 * r.pct / max)}px"></span></td></tr>`).join("");
+  return tableWrap(`<tr><th>Route</th><th class="num">Share</th><th></th></tr>`, rows);
+}
+function tendencyBlock(t, full) {
+  const d = el("div");
+  d.appendChild(statBlock("", [
+    ["Man coverage", pct(t.manRate)], ["Zone coverage", pct(t.zoneRate)],
+    ["Blitz rate", pct(t.blitzRate)], ["Pressure rate", pct(t.pressureRate)],
+    ["Avg box", t.avgBox],
+  ]));
+  const cov = Object.entries(t.coverage || {}).sort((a, b) => b[1] - a[1]).slice(0, full ? 10 : 5);
+  if (cov.length) {
+    const max = Math.max(...cov.map(([, v]) => v));
+    const rows = cov.map(([k, v]) => `<tr><td>${esc(COVER[k] || k)}</td><td class="num hi">${v}%</td>
+      <td><span class="bar" style="width:${Math.round(100 * v / max)}px"></span></td></tr>`).join("");
+    d.appendChild(el("h3", "sec", "Coverage shells"));
+    d.appendChild(tableWrap(`<tr><th>Shell</th><th class="num">Rate</th><th></th></tr>`, rows));
+  }
+  return d;
+}
 
 /* ── wire up ───────────────────────────────────────────────────────────── */
 const chips = $("#chips");

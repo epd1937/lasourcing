@@ -11,6 +11,7 @@ import { planQuery } from "../llm.js";
 import * as espn from "../sources/espn.js";
 import * as nfl from "../sources/nflverse.js";
 import * as odds from "../sources/odds.js";
+import * as tables from "../sources/tables.js";
 
 const now = () => new Date().getFullYear();
 
@@ -88,16 +89,62 @@ async function playerAdvanced(plan) {
   return { kind: "advanced", ...adv, phase: plan.phase || null };
 }
 
-// matchup: player usage/efficiency + opponent defense summary.
+// route_profile: a receiver's route tree + man/zone splits (ingested tables).
+async function routeProfile(plan) {
+  const year = plan.timeframe?.season || tables.latestSeason();
+  const cov = tables.playerCoverage(plan.player, year);
+  if (!cov) throw userErr(`No route/coverage data for "${plan.player}" in ${year}. Ingest that season first.`);
+  return { kind: "route_profile", year, ...cov };
+}
+
+// defense_vs_position: a single defense's grade, or a league leaderboard.
+async function defenseVsPosition(plan) {
+  const year = plan.timeframe?.season || tables.latestSeason();
+  const pos = plan.position || "WR";
+  const metric = pos === "RB" ? "rushYdsPerGame" : "recYdsPerGame";
+  const teamName = plan.team || plan.opponent;
+  if (teamName) {
+    const abbr = tables.teamAbbr(teamName);
+    if (!abbr) throw userErr(`Couldn't identify the team "${teamName}".`);
+    const dvp = tables.defenseVsPosition(abbr, year);
+    const tend = tables.defenseTendencies(abbr, year);
+    if (!dvp) throw userErr(`No data for ${tables.teamName(abbr)} in ${year}.`);
+    return { kind: "defense_vs_position_team", year, team: abbr, teamName: tables.teamName(abbr), position: pos, row: dvp.pos[pos] || null, games: dvp.games, tendencies: tend };
+  }
+  const board = tables.defenseLeaderboard(pos, metric, year);
+  return { kind: "defense_leaderboard", ...board };
+}
+
+async function defenseTendencies(plan) {
+  const year = plan.timeframe?.season || tables.latestSeason();
+  const abbr = tables.teamAbbr(plan.team || plan.opponent);
+  if (!abbr) throw userErr(`Name a team (e.g. "the Ravens").`);
+  const tend = tables.defenseTendencies(abbr, year);
+  if (!tend) throw userErr(`No tendency data for ${tables.teamName(abbr)} in ${year}.`);
+  return { kind: "defense_tendencies", year, team: abbr, teamName: tables.teamName(abbr), tendencies: tend };
+}
+
+// matchup: the full blend — player usage + route/coverage splits, overlaid on
+// the opponent defense's position grade AND its coverage tendencies.
 async function matchup(plan) {
-  const [adv, oppTeam] = await Promise.all([
-    nfl.playerAdvanced(plan.player, plan.timeframe?.season),
-    plan.opponent ? espn.resolveTeam(plan.opponent) : Promise.resolve(null),
-  ]);
-  if (!adv.found) throw userErr(`No nflverse data found for "${plan.player}".`);
-  let defense = null;
-  if (oppTeam) defense = await espn.teamDefense(oppTeam.id, plan.timeframe?.season).catch(() => null);
-  return { kind: "matchup", advanced: adv, opponent: oppTeam, defense };
+  const year = plan.timeframe?.season || tables.latestSeason();
+  const adv = await nfl.playerAdvanced(plan.player, year).catch(() => ({ found: false }));
+  const cov = tables.playerCoverage(plan.player, year);
+  if (!adv.found && !cov) throw userErr(`No data found for "${plan.player}".`);
+  const abbr = plan.opponent ? tables.teamAbbr(plan.opponent) : null;
+  const pos = plan.position || cov?.pos || adv?.position || "WR";
+  const posKey = ["WR", "RB", "TE"].includes(pos) ? pos : "WR";
+  return {
+    kind: "matchup",
+    year,
+    player: cov?.name || adv?.player || plan.player,
+    position: pos,
+    advanced: adv.found ? adv : null,
+    playerCoverage: cov,
+    opponent: abbr ? { abbr, name: tables.teamName(abbr) } : null,
+    defenseVsPos: abbr ? tables.defenseVsPosition(abbr, year)?.pos?.[posKey] || null : null,
+    defenseTendencies: abbr ? tables.defenseTendencies(abbr, year) : null,
+  };
 }
 
 async function gameLogHandler(plan) {
@@ -116,6 +163,9 @@ const HANDLERS = {
   count_games: countGames,
   player_splits: playerSplits,
   player_advanced: playerAdvanced,
+  route_profile: routeProfile,
+  defense_vs_position: defenseVsPosition,
+  defense_tendencies: defenseTendencies,
   matchup,
   game_log: gameLogHandler,
   odds: oddsHandler,
