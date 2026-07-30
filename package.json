@@ -1,7 +1,7 @@
 {
-  "name": "diamond-desk",
+  "name": "gridiron-desk",
   "version": "0.1.0",
-  "description": "Natural-language MLB betting & stats research — an Action Network-style desk for baseball.",
+  "description": "Natural-language NFL betting & stats research — an Action Network-style desk for football.",
   "type": "module",
   "scripts": {
     "start": "node server/index.js",

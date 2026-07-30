@@ -1,11 +1,15 @@
 // ─────────────────────────────────────────────────────────────────────────
-// /api/ask  — the front door. Parse the question, run the matching handler,
-// return { plan, result }. Each result carries a `kind` the frontend renders.
+// /api/ask — parse the question, run the matching handler, return
+// { plan, result }. Each result carries a `kind` the frontend renders.
+//
+// Game logs / counts / advanced usage come from nflverse (clean typed columns
+// derived from play-by-play). Situational splits and opponent-defense come
+// from ESPN. Odds come from The Odds API.
 // ─────────────────────────────────────────────────────────────────────────
 
 import { planQuery } from "../llm.js";
-import * as mlb from "../sources/statsapi.js";
-import * as savant from "../sources/savant.js";
+import * as espn from "../sources/espn.js";
+import * as nfl from "../sources/nflverse.js";
 import * as odds from "../sources/odds.js";
 
 const now = () => new Date().getFullYear();
@@ -17,110 +21,16 @@ function passes(v, op, t) {
     case "eq": return v === t;
     case "lt": return v < t;
     case "lte": return v <= t;
-    default: return v >= t; // gte
+    default: return v >= t;
   }
 }
 
-// count_games: threshold questions over per-game logs, with optional month
-// filter and single-season vs career scope. Handles regular season +
-// postseason via timeframe.type === "postseason".
-async function countGames(plan) {
-  const player = await mlb.resolvePlayer(plan.player);
-  if (!player) throw userErr(`No player found named "${plan.player}".`);
-  const group = plan.group || "hitting";
-  const stat = plan.stat || "homeRuns";
-  const op = plan.operator || "gte";
-  const t = plan.threshold ?? 1;
-
-  const tf = plan.timeframe || { type: "career" };
-  const postseason = tf.type === "postseason";
-  const gameTypes = postseason ? ["D", "L", "W", "F", "P"] : ["R"];
-  const seasons = tf.type === "season" && tf.season
-    ? [tf.season]
-    : await mlb.playerSeasons(player.id, group);
-
-  const all = await mlb.gameLogsAcross(player.id, seasons, group, gameTypes);
-  const matches = all.filter((g) => {
-    if (!passes(g.stats[stat], op, t)) return false;
-    if (tf.type === "month" && tf.month) {
-      if (parseInt(g.date.slice(5, 7), 10) !== tf.month) return false;
-    }
-    return true;
-  });
-  return {
-    kind: "count",
-    player,
-    stat,
-    operator: op,
-    threshold: t,
-    scope: tf.type === "season" ? `${tf.season}` : postseason ? "postseason (career)" : "career",
-    count: matches.length,
-    games: matches.slice(0, 200),
-  };
-}
-
-async function playerSplits(plan) {
-  const player = await mlb.resolvePlayer(plan.player);
-  if (!player) throw userErr(`No player found named "${plan.player}".`);
-  const group = plan.group || "hitting";
-  const tf = plan.timeframe || { type: "season" };
-
-  if (tf.type === "lastN") {
-    const games = await mlb.lastNGames(player.id, tf.lastN || 10, group);
-    return { kind: "lastN", player, n: tf.lastN || 10, games };
-  }
-  const season = tf.season || now();
-  const splits = await mlb.splitsVsHand(player.id, season, group);
-  return { kind: "splits", player, season, handedness: plan.handedness || null, splits };
-}
-
-async function pitchProfile(plan) {
-  const player = await mlb.resolvePlayer(plan.player);
-  if (!player) throw userErr(`No player found named "${plan.player}".`);
-  const year = plan.timeframe?.season || now();
-  const data = await savant.batterVsPitchType(player.id, year);
-  return { kind: "pitch_profile", player, ...data, pitchType: plan.pitchType || null };
-}
-
-async function pitchMix(plan) {
-  const name = plan.pitcher || plan.player;
-  const player = await mlb.resolvePlayer(name);
-  if (!player) throw userErr(`No pitcher found named "${name}".`);
-  const year = plan.timeframe?.season || now();
-  const data = await savant.pitchMix(player.id, year);
-  return { kind: "pitch_mix", player, ...data };
-}
-
-// matchup: the money view — batter's L/R splits + pitch profile against the
-// pitcher's actual arsenal, side by side.
-async function matchup(plan) {
-  const [batter, pitcher] = await Promise.all([
-    mlb.resolvePlayer(plan.player),
-    mlb.resolvePlayer(plan.pitcher),
-  ]);
-  if (!batter) throw userErr(`No batter found named "${plan.player}".`);
-  if (!pitcher) throw userErr(`No pitcher found named "${plan.pitcher}".`);
-  const year = plan.timeframe?.season || now();
-  const [splits, profile, mix] = await Promise.all([
-    mlb.splitsVsHand(batter.id, year, "hitting").catch(() => ({ vsL: null, vsR: null })),
-    savant.batterVsPitchType(batter.id, year).catch(() => ({ byPitch: [] })),
-    savant.pitchMix(pitcher.id, year).catch(() => ({ arsenal: [] })),
-  ]);
-  return { kind: "matchup", batter, pitcher, year, splits, batterProfile: profile.byPitch, pitcherMix: mix.arsenal };
-}
-
-async function gameLogHandler(plan) {
-  const player = await mlb.resolvePlayer(plan.player);
-  if (!player) throw userErr(`No player found named "${plan.player}".`);
-  const n = plan.timeframe?.lastN || 15;
-  const games = await mlb.lastNGames(player.id, n, plan.group || "hitting");
-  return { kind: "lastN", player, n, games };
-}
-
-async function oddsHandler(plan) {
-  const lines = await odds.gameLines();
-  return { kind: "odds", market: plan.market || "game lines", games: lines };
-}
+const STAT_LABEL = {
+  passing_yards: "passing yards", passing_tds: "passing TDs", interceptions: "interceptions",
+  completions: "completions", attempts: "attempts", rushing_yards: "rushing yards",
+  rushing_tds: "rushing TDs", carries: "carries", receiving_yards: "receiving yards",
+  receptions: "receptions", targets: "targets", receiving_tds: "receiving TDs",
+};
 
 function userErr(msg) {
   const e = new Error(msg);
@@ -128,11 +38,84 @@ function userErr(msg) {
   return e;
 }
 
+// count_games: threshold over weekly logs, single season or recent career.
+async function countGames(plan) {
+  const column = nfl.statColumn(plan.stat) || "passing_yards";
+  const op = plan.operator || "gte";
+  const t = plan.threshold ?? 1;
+  const tf = plan.timeframe || { type: "career" };
+  const seasons =
+    tf.type === "season" && tf.season
+      ? [tf.season]
+      : Array.from({ length: 6 }, (_, i) => now() - i); // recent career window
+
+  const logs = await Promise.all(seasons.map((yr) => nfl.weeklyLog(plan.player, yr).catch(() => ({ games: [] }))));
+  const found = logs.find((l) => l.found);
+  if (!found) throw userErr(`No nflverse data found for "${plan.player}".`);
+  const all = logs.flatMap((l) => l.games.map((g) => ({ ...g })));
+  const matches = all.filter((g) => passes(g.stats[column], op, t)).sort((a, b) => (b.season - a.season) || (b.week - a.week));
+
+  return {
+    kind: "count",
+    player: found.player,
+    column,
+    statLabel: STAT_LABEL[column] || column,
+    operator: op,
+    threshold: t,
+    scope: tf.type === "season" ? `${tf.season}` : `${seasons[seasons.length - 1]}–${seasons[0]}`,
+    count: matches.length,
+    games: matches.slice(0, 200),
+  };
+}
+
+async function playerSplits(plan) {
+  const tf = plan.timeframe || { type: "season" };
+  if (tf.type === "lastN") {
+    const log = await nfl.weeklyLog(plan.player, tf.season || now());
+    if (!log.found) throw userErr(`No data for "${plan.player}".`);
+    return { kind: "lastN", player: log.player, n: tf.lastN || 5, games: log.games.slice(0, tf.lastN || 5) };
+  }
+  // ESPN situational splits (home/away, vs division, …).
+  const player = await espn.resolvePlayer(plan.player);
+  if (!player) throw userErr(`Couldn't resolve "${plan.player}" on ESPN.`);
+  const data = await espn.splits(player.id, tf.season);
+  return { kind: "splits", player, season: tf.season || now(), ...data };
+}
+
+async function playerAdvanced(plan) {
+  const adv = await nfl.playerAdvanced(plan.player, plan.timeframe?.season);
+  if (!adv.found) throw userErr(`No nflverse data found for "${plan.player}" in ${adv.year}.`);
+  return { kind: "advanced", ...adv, phase: plan.phase || null };
+}
+
+// matchup: player usage/efficiency + opponent defense summary.
+async function matchup(plan) {
+  const [adv, oppTeam] = await Promise.all([
+    nfl.playerAdvanced(plan.player, plan.timeframe?.season),
+    plan.opponent ? espn.resolveTeam(plan.opponent) : Promise.resolve(null),
+  ]);
+  if (!adv.found) throw userErr(`No nflverse data found for "${plan.player}".`);
+  let defense = null;
+  if (oppTeam) defense = await espn.teamDefense(oppTeam.id, plan.timeframe?.season).catch(() => null);
+  return { kind: "matchup", advanced: adv, opponent: oppTeam, defense };
+}
+
+async function gameLogHandler(plan) {
+  const log = await nfl.weeklyLog(plan.player, plan.timeframe?.season);
+  if (!log.found) throw userErr(`No data for "${plan.player}".`);
+  const n = plan.timeframe?.lastN || log.games.length;
+  return { kind: "lastN", player: log.player, n, games: log.games.slice(0, n) };
+}
+
+async function oddsHandler(plan) {
+  const lines = await odds.gameLines();
+  return { kind: "odds", market: plan.market || "game lines", games: lines };
+}
+
 const HANDLERS = {
   count_games: countGames,
   player_splits: playerSplits,
-  pitch_profile: pitchProfile,
-  pitch_mix: pitchMix,
+  player_advanced: playerAdvanced,
   matchup,
   game_log: gameLogHandler,
   odds: oddsHandler,

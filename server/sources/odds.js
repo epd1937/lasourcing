@@ -11,7 +11,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 
 const BASE = "https://api.the-odds-api.com/v4";
-const SPORT = "baseball_mlb";
+const SPORT = "americanfootball_nfl";
 
 function key() {
   const k = process.env.ODDS_API_KEY;
@@ -60,8 +60,8 @@ export async function gameLines({ regions = "us", markets = "h2h,spreads,totals"
 /* ── Player props for one game (HR, hits, total bases, strikeouts, …) ──── */
 export async function playerProps(eventId, { regions = "us", markets } = {}) {
   const defaultMarkets = [
-    "batter_home_runs", "batter_hits", "batter_total_bases",
-    "batter_rbis", "batter_runs_scored", "pitcher_strikeouts",
+    "player_pass_yds", "player_pass_tds", "player_rush_yds",
+    "player_reception_yds", "player_receptions", "player_anytime_td",
   ].join(",");
   const ev = await jget(`/sports/${SPORT}/events/${eventId}/odds`, {
     regions,

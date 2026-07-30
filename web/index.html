@@ -3,23 +3,23 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Diamond Desk — MLB betting & stats research</title>
+<title>Gridiron Desk — NFL betting & stats research</title>
 <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="brand"><span class="dot"></span><b>Diamond Desk</b><span>MLB research</span></div>
+    <div class="brand"><span class="dot"></span><b>Gridiron Desk</b><span>NFL research</span></div>
     <div id="status-chip">checking…</div>
   </header>
 
-  <h1>Ask anything about MLB — for the bet.</h1>
-  <p class="sub">Plain-English questions, answered from official game logs, Statcast pitch data,
-    and live sportsbook lines. Splits vs LHP/RHP, batter-vs-pitch-type, pitcher arsenals, and props.</p>
+  <h1>Ask anything about the NFL — for the bet.</h1>
+  <p class="sub">Plain-English questions, answered from play-by-play–derived data (EPA, target share,
+    air yards, WOPR), weekly game logs, situational splits, and live sportsbook lines &amp; props.</p>
 
   <div class="searchbar">
     <input id="q" type="text" autocomplete="off"
-      placeholder="How does Aaron Judge hit against sliders this season?" />
+      placeholder="What's CeeDee Lamb's target share and air yards this season?" />
     <button id="go">Ask</button>
   </div>
 
@@ -29,9 +29,9 @@
   <div id="result"></div>
 
   <footer>
-    <div>Data: <a href="https://statsapi.mlb.com" target="_blank" rel="noopener">MLB Stats API</a> ·
-      <a href="https://baseballsavant.mlb.com" target="_blank" rel="noopener">Baseball Savant (Statcast)</a> ·
-      <a href="https://the-odds-api.com" target="_blank" rel="noopener">The Odds API</a>.</div>
+    <div>Data: <a href="https://github.com/nflverse/nflverse-data" target="_blank" rel="noopener">nflverse</a> (play-by-play) ·
+      <a href="https://www.espn.com" target="_blank" rel="noopener">ESPN</a> (splits/defense) ·
+      <a href="https://the-odds-api.com" target="_blank" rel="noopener">The Odds API</a> (lines).</div>
     <div>Research tool — not betting advice. Verify lines with your book before wagering.</div>
   </footer>
 </div>
